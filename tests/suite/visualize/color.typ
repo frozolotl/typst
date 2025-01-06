@@ -187,8 +187,8 @@
 
 --- color-rgb-out-of-range ---
 // Error for values that are out of range.
-// Error: 11-14 number must be between 0 and 255
-#test(rgb(-30, 15, 50))
+// Error: 6-9 number must be between 0 and 255
+#rgb(-30, 15, 50)
 
 --- color-rgb-bad-string ---
 // Error: 6-11 color string contains non-hexadecimal letters
@@ -209,6 +209,10 @@
 --- color-luma-unexpected-argument ---
 // Error: 10-20 unexpected argument: key
 #luma(1, key: "val")
+
+--- color-oklch-nan-chroma ---
+// Error: 13-22 number must neither be infinite nor NaN
+#oklch(50%, float.nan, 0deg)
 
 --- color-mix-bad-amount-type ---
 // Error: 12-24 expected float or ratio, found string
