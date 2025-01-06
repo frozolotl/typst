@@ -796,7 +796,7 @@ impl Color {
     /// omitted if it is equal to `ff` (255 / 100%).
     #[func]
     pub fn to_hex(self) -> EcoString {
-        let [r, g, b, a] = self.to_rgb().to_vec4_u8();
+        let [r, g, b, a] = self.to_rgb().normalize().to_vec4_u8();
         if a != 255 {
             eco_format!("#{:02x}{:02x}{:02x}{:02x}", r, g, b, a)
         } else {
@@ -1058,88 +1058,39 @@ impl Color {
 }
 
 impl Color {
-    /// Same as [`Color::mix`], but takes an iterator instead of a vector.
-    pub fn mix_iter(
-        colors: impl IntoIterator<
-            Item = WeightedColor,
-            IntoIter = impl ExactSizeIterator<Item = WeightedColor>,
-        >,
-        space: ColorSpace,
-    ) -> StrResult<Color> {
-        let mut colors = colors.into_iter();
-        if space.hue_index().is_some() && colors.len() > 2 {
-            bail!("cannot mix more than two colors in a hue-based space");
-        }
-
-        let m = if space.hue_index().is_some() && colors.len() == 2 {
-            let mut m = [0.0; 4];
-
-            let WeightedColor { color: c0, weight: w0 } = colors.next().unwrap();
-            let WeightedColor { color: c1, weight: w1 } = colors.next().unwrap();
-
-            let c0 = c0.to_space(space).to_vec4();
-            let c1 = c1.to_space(space).to_vec4();
-            let w0 = w0 as f32;
-            let w1 = w1 as f32;
-
-            if w0 + w1 <= 0.0 {
-                bail!("sum of weights must be positive");
-            }
-
-            for i in 0..4 {
-                m[i] = (w0 * c0[i] + w1 * c1[i]) / (w0 + w1);
-            }
-
-            // Ensure that the hue circle is traversed in the short direction.
-            if let Some(index) = space.hue_index() {
-                if (c0[index] - c1[index]).abs() > 180.0 {
-                    let (h0, h1) = if c0[index] < c1[index] {
-                        (c0[index] + 360.0, c1[index])
-                    } else {
-                        (c0[index], c1[index] + 360.0)
-                    };
-                    m[index] = (w0 * h0 + w1 * h1) / (w0 + w1);
+    /// Replace any missing components (represented as NaN) with zero.
+    pub fn normalize(mut self) -> Color {
+        let components: &mut [f32] = match &mut self {
+            Color::Luma(c) => c.as_mut(),
+            Color::Oklab(c) => c.as_mut(),
+            Color::Oklch(c) => c.as_mut(),
+            Color::Rgb(c) => c.as_mut(),
+            Color::LinearRgb(c) => c.as_mut(),
+            Color::Hsl(c) => c.as_mut(),
+            Color::Hsv(c) => c.as_mut(),
+            // Special-cased because it's not part of [`palette`].
+            Color::Cmyk(c) => {
+                if c.c.is_nan() {
+                    c.c = 0.0;
                 }
+                if c.m.is_nan() {
+                    c.m = 0.0;
+                }
+                if c.y.is_nan() {
+                    c.y = 0.0;
+                }
+                if c.k.is_nan() {
+                    c.k = 0.0;
+                }
+                return self;
             }
-
-            m
-        } else {
-            let mut total = 0.0;
-            let mut acc = [0.0; 4];
-
-            for WeightedColor { color, weight } in colors {
-                let weight = weight as f32;
-                let v = color.to_space(space).to_vec4();
-                acc[0] += weight * v[0];
-                acc[1] += weight * v[1];
-                acc[2] += weight * v[2];
-                acc[3] += weight * v[3];
-                total += weight;
-            }
-
-            if total <= 0.0 {
-                bail!("sum of weights must be positive");
-            }
-
-            acc.map(|v| v / total)
         };
-
-        Ok(match space {
-            ColorSpace::Oklab => Color::Oklab(Oklab::new(m[0], m[1], m[2], m[3])),
-            ColorSpace::Oklch => Color::Oklch(Oklch::new(m[0], m[1], m[2], m[3])),
-            ColorSpace::Srgb => Color::Rgb(Rgb::new(m[0], m[1], m[2], m[3])),
-            ColorSpace::LinearRgb => {
-                Color::LinearRgb(LinearRgb::new(m[0], m[1], m[2], m[3]))
+        for component in components {
+            if component.is_nan() {
+                *component = 0.0;
             }
-            ColorSpace::Hsl => {
-                Color::Hsl(Hsl::new(RgbHue::from_degrees(m[0]), m[1], m[2], m[3]))
-            }
-            ColorSpace::Hsv => {
-                Color::Hsv(Hsv::new(RgbHue::from_degrees(m[0]), m[1], m[2], m[3]))
-            }
-            ColorSpace::Cmyk => Color::Cmyk(Cmyk::new(m[0], m[1], m[2], m[3])),
-            ColorSpace::D65Gray => Color::Luma(Luma::new(m[0], m[3])),
-        })
+        }
+        self
     }
 
     /// Construct a new RGBA color from 8-bit values.
@@ -1361,6 +1312,90 @@ impl Color {
             Self::Hsv(c) => c,
         })
     }
+
+    /// Same as [`Color::mix`], but takes an iterator instead of a vector.
+    pub fn mix_iter(
+        colors: impl IntoIterator<
+            Item = WeightedColor,
+            IntoIter = impl ExactSizeIterator<Item = WeightedColor>,
+        >,
+        space: ColorSpace,
+    ) -> StrResult<Color> {
+        let mut colors = colors.into_iter();
+        if space.hue_index().is_some() && colors.len() > 2 {
+            bail!("cannot mix more than two colors in a hue-based space");
+        }
+
+        let m = if space.hue_index().is_some() && colors.len() == 2 {
+            let mut m = [0.0; 4];
+
+            let WeightedColor { color: c0, weight: w0 } = colors.next().unwrap();
+            let WeightedColor { color: c1, weight: w1 } = colors.next().unwrap();
+
+            let c0 = c0.to_space(space).to_vec4();
+            let c1 = c1.to_space(space).to_vec4();
+            let w0 = w0 as f32;
+            let w1 = w1 as f32;
+
+            if w0 + w1 <= 0.0 {
+                bail!("sum of weights must be positive");
+            }
+
+            for i in 0..4 {
+                m[i] = (w0 * c0[i] + w1 * c1[i]) / (w0 + w1);
+            }
+
+            // Ensure that the hue circle is traversed in the short direction.
+            if let Some(index) = space.hue_index() {
+                if (c0[index] - c1[index]).abs() > 180.0 {
+                    let (h0, h1) = if c0[index] < c1[index] {
+                        (c0[index] + 360.0, c1[index])
+                    } else {
+                        (c0[index], c1[index] + 360.0)
+                    };
+                    m[index] = (w0 * h0 + w1 * h1) / (w0 + w1);
+                }
+            }
+
+            m
+        } else {
+            let mut total = 0.0;
+            let mut acc = [0.0; 4];
+
+            for WeightedColor { color, weight } in colors {
+                let weight = weight as f32;
+                let v = color.to_space(space).to_vec4();
+                acc[0] += weight * v[0];
+                acc[1] += weight * v[1];
+                acc[2] += weight * v[2];
+                acc[3] += weight * v[3];
+                total += weight;
+            }
+
+            if total <= 0.0 {
+                bail!("sum of weights must be positive");
+            }
+
+            acc.map(|v| v / total)
+        };
+
+        Ok(match space {
+            ColorSpace::Oklab => Color::Oklab(Oklab::new(m[0], m[1], m[2], m[3])),
+            ColorSpace::Oklch => Color::Oklch(Oklch::new(m[0], m[1], m[2], m[3])),
+            ColorSpace::Srgb => Color::Rgb(Rgb::new(m[0], m[1], m[2], m[3])),
+            ColorSpace::LinearRgb => {
+                Color::LinearRgb(LinearRgb::new(m[0], m[1], m[2], m[3]))
+            }
+            ColorSpace::Hsl => {
+                Color::Hsl(Hsl::new(RgbHue::from_degrees(m[0]), m[1], m[2], m[3]))
+            }
+            ColorSpace::Hsv => {
+                Color::Hsv(Hsv::new(RgbHue::from_degrees(m[0]), m[1], m[2], m[3]))
+            }
+            ColorSpace::Cmyk => Color::Cmyk(Cmyk::new(m[0], m[1], m[2], m[3])),
+            ColorSpace::D65Gray => Color::Luma(Luma::new(m[0], m[3])),
+        })
+    }
 }
 
 impl Debug for Color {
@@ -1529,7 +1564,7 @@ fn hue_angle(degrees: f32) -> Angle {
 
 impl PartialEq for Color {
     fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
+        match (self.normalize(), other.normalize()) {
             // Lower precision for comparison to avoid rounding errors.
             // Keeps backward compatibility with previous versions of Typst.
             (Self::Rgb(_), Self::Rgb(_)) => self.to_vec4_u8() == other.to_vec4_u8(),

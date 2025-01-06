@@ -819,7 +819,7 @@ fn to_typst(synt::Color { r, g, b, a }: synt::Color) -> Color {
 }
 
 fn to_syn(color: Color) -> synt::Color {
-    let [r, g, b, a] = color.to_rgb().to_vec4_u8();
+    let [r, g, b, a] = color.to_rgb().normalize().to_vec4_u8();
     synt::Color { r, g, b, a }
 }
 

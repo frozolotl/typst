@@ -186,9 +186,9 @@ impl ColorEncode for ColorSpace {
     fn encode(&self, color: Color) -> [f32; 4] {
         match self {
             ColorSpace::Oklab | ColorSpace::Oklch | ColorSpace::Hsl | ColorSpace::Hsv => {
-                color.to_space(ColorSpace::Srgb).to_vec4()
+                color.to_space(ColorSpace::Srgb).normalize().to_vec4()
             }
-            _ => color.to_space(*self).to_vec4(),
+            _ => color.to_space(*self).normalize().to_vec4(),
         }
     }
 }

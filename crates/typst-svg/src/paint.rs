@@ -1,4 +1,5 @@
 use std::f32::consts::TAU;
+use std::fmt;
 
 use ecow::{eco_format, EcoString};
 use ttf_parser::OutlineBuilder;
@@ -506,82 +507,83 @@ pub trait ColorEncode {
 impl ColorEncode for Color {
     fn encode(&self) -> EcoString {
         match *self {
-            c @ Color::Rgb(_)
-            | c @ Color::Luma(_)
-            | c @ Color::Cmyk(_)
-            | c @ Color::Hsv(_) => c.to_hex(),
-            Color::LinearRgb(rgb) => {
-                if rgb.alpha != 1.0 {
-                    eco_format!(
-                        "color(srgb-linear {:.5} {:.5} {:.5} / {:.5})",
-                        rgb.red,
-                        rgb.green,
-                        rgb.blue,
-                        rgb.alpha
-                    )
-                } else {
-                    eco_format!(
-                        "color(srgb-linear {:.5} {:.5} {:.5})",
-                        rgb.red,
-                        rgb.green,
-                        rgb.blue,
-                    )
-                }
+            Color::Luma(_) | Color::Cmyk(_) | Color::Hsv(_) => self.to_rgb().encode(),
+            Color::Oklab(c) => {
+                eco_format!(
+                    "oklab({} {} {} / {})",
+                    Percentage(c.l),
+                    Number(c.a),
+                    Number(c.b),
+                    Percentage(c.alpha),
+                )
             }
-            Color::Oklab(oklab) => {
-                if oklab.alpha != 1.0 {
-                    eco_format!(
-                        "oklab({:.3}% {:.5} {:.5} / {:.5})",
-                        oklab.l * 100.0,
-                        oklab.a,
-                        oklab.b,
-                        oklab.alpha
-                    )
-                } else {
-                    eco_format!(
-                        "oklab({:.3}% {:.5} {:.5})",
-                        oklab.l * 100.0,
-                        oklab.a,
-                        oklab.b,
-                    )
-                }
-            }
-            Color::Oklch(oklch) => {
-                if oklch.alpha != 1.0 {
-                    eco_format!(
-                        "oklch({:.3}% {:.5} {:.3}deg / {:.3})",
-                        oklch.l * 100.0,
-                        oklch.chroma,
-                        oklch.hue.into_degrees(),
-                        oklch.alpha
-                    )
-                } else {
-                    eco_format!(
-                        "oklch({:.3}% {:.5} {:.3}deg)",
-                        oklch.l * 100.0,
-                        oklch.chroma,
-                        oklch.hue.into_degrees(),
-                    )
-                }
-            }
-            Color::Hsl(hsl) => {
-                if hsl.alpha != 1.0 {
-                    eco_format!(
-                        "hsla({:.3}deg {:.3}% {:.3}% / {:.5})",
-                        hsl.hue.into_degrees(),
-                        hsl.saturation * 100.0,
-                        hsl.lightness * 100.0,
-                        hsl.alpha,
-                    )
-                } else {
-                    eco_format!(
-                        "hsl({:.3}deg {:.3}% {:.3}%)",
-                        hsl.hue.into_degrees(),
-                        hsl.saturation * 100.0,
-                        hsl.lightness * 100.0,
-                    )
-                }
-            }
+            Color::Oklch(c) => eco_format!(
+                "oklch({} {} {} / {})",
+                Percentage(c.l),
+                Number(c.chroma),
+                Degrees(c.hue.into_degrees()),
+                Percentage(c.alpha),
+            ),
+            Color::Rgb(c) => eco_format!(
+                "rgb({} {} {} / {})",
+                Percentage(c.red),
+                Percentage(c.green),
+                Percentage(c.blue),
+                Percentage(c.alpha),
+            ),
+            Color::LinearRgb(c) => eco_format!(
+                "color(srgb-linear {} {} {} / {})",
+                Percentage(c.red),
+                Percentage(c.green),
+                Percentage(c.blue),
+                Percentage(c.alpha),
+            ),
+            Color::Hsl(c) => eco_format!(
+                "hsl({} {} {} / {})",
+                Degrees(c.hue.into_degrees()),
+                Percentage(c.saturation),
+                Percentage(c.lightness),
+                Percentage(c.alpha),
+            ),
+        }
+    }
+}
+
+/// Format a number without any suffix.
+struct Number(f32);
+
+impl fmt::Display for Number {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.0.is_nan() {
+            write!(f, "none")
+        } else {
+            write!(f, "{}", self.0)
+        }
+    }
+}
+
+/// Format a number as a percentage value.
+struct Percentage(f32);
+
+impl fmt::Display for Percentage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.0.is_nan() {
+            write!(f, "none")
+        } else {
+            write!(f, "{}%", self.0 * 100.0)
+        }
+    }
+}
+
+/// Format a number as a value representing an angle.
+struct Degrees(f32);
+
+impl fmt::Display for Degrees {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.0.is_nan() {
+            write!(f, "none")
+        } else {
+            write!(f, "{}deg", self.0)
         }
     }
 }
