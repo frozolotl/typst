@@ -203,7 +203,7 @@
 #rgb(0, 1)
 
 --- color-rgb-bad-type ---
-// Error: 21-26 expected integer or ratio, found boolean
+// Error: 21-26 expected integer, ratio, or none, found boolean
 #rgb(10%, 20%, 30%, false)
 
 --- color-luma-unexpected-argument ---

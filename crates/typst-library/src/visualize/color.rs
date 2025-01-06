@@ -13,8 +13,8 @@ use typst_syntax::{Span, Spanned};
 
 use crate::diag::{bail, At, SourceResult, StrResult};
 use crate::foundations::{
-    array, cast, func, repr, scope, ty, Args, Array, IntoValue, Module, Repr, Scope, Str,
-    Value,
+    array, cast, func, repr, scope, ty, Args, Array, IntoValue, Module, NoneValue, Repr,
+    Scope, Str, Value,
 };
 use crate::layout::{Angle, Ratio};
 
@@ -264,11 +264,9 @@ impl Color {
         Ok(if let Some(color) = args.find::<Color>()? {
             color.to_luma()
         } else {
-            let Component(gray) =
-                args.expect("gray component").unwrap_or(Component(Ratio::one()));
-            let RatioComponent(alpha) =
-                args.eat()?.unwrap_or(RatioComponent(Ratio::one()));
-            Self::Luma(Luma::new(gray.get() as f32, alpha.get() as f32))
+            let Component(gray) = args.expect("gray component").unwrap_or(Component(1.0));
+            let RatioComponent(alpha) = args.eat()?.unwrap_or(RatioComponent(1.0));
+            Self::Luma(Luma::new(gray, alpha))
         })
     }
 
@@ -323,9 +321,8 @@ impl Color {
             let RatioComponent(l) = args.expect("lightness component")?;
             let ChromaComponent(a) = args.expect("A component")?;
             let ChromaComponent(b) = args.expect("B component")?;
-            let RatioComponent(alpha) =
-                args.eat()?.unwrap_or(RatioComponent(Ratio::one()));
-            Self::Oklab(Oklab::new(l.get() as f32, a, b, alpha.get() as f32))
+            let RatioComponent(alpha) = args.eat()?.unwrap_or(RatioComponent(1.0));
+            Self::Oklab(Oklab::new(l, a, b, alpha))
         })
     }
 
@@ -363,7 +360,7 @@ impl Color {
         chroma: ChromaComponent,
         /// The hue component.
         #[external]
-        hue: Angle,
+        hue: AngleComponent,
         /// The alpha component.
         #[external]
         alpha: RatioComponent,
@@ -378,15 +375,9 @@ impl Color {
         } else {
             let RatioComponent(l) = args.expect("lightness component")?;
             let ChromaComponent(c) = args.expect("chroma component")?;
-            let h: Angle = args.expect("hue component")?;
-            let RatioComponent(alpha) =
-                args.eat()?.unwrap_or(RatioComponent(Ratio::one()));
-            Self::Oklch(Oklch::new(
-                l.get() as f32,
-                c,
-                OklabHue::from_degrees(h.to_deg() as f32),
-                alpha.get() as f32,
-            ))
+            let AngleComponent(h) = args.expect("hue component")?;
+            let RatioComponent(alpha) = args.eat()?.unwrap_or(RatioComponent(1.0));
+            Self::Oklch(Oklch::new(l, c, OklabHue::from_degrees(h), alpha))
         })
     }
 
@@ -439,13 +430,8 @@ impl Color {
             let Component(r) = args.expect("red component")?;
             let Component(g) = args.expect("green component")?;
             let Component(b) = args.expect("blue component")?;
-            let Component(a) = args.eat()?.unwrap_or(Component(Ratio::one()));
-            Self::LinearRgb(LinearRgb::new(
-                r.get() as f32,
-                g.get() as f32,
-                b.get() as f32,
-                a.get() as f32,
-            ))
+            let Component(a) = args.eat()?.unwrap_or(Component(1.0));
+            Self::LinearRgb(LinearRgb::new(r, g, b, a))
         })
     }
 
@@ -510,13 +496,8 @@ impl Color {
             let Component(r) = args.expect("red component")?;
             let Component(g) = args.expect("green component")?;
             let Component(b) = args.expect("blue component")?;
-            let Component(a) = args.eat()?.unwrap_or(Component(Ratio::one()));
-            Self::Rgb(Rgb::new(
-                r.get() as f32,
-                g.get() as f32,
-                b.get() as f32,
-                a.get() as f32,
-            ))
+            let Component(a) = args.eat()?.unwrap_or(Component(1.0));
+            Self::Rgb(Rgb::new(r, g, b, a))
         })
     }
 
@@ -571,12 +552,7 @@ impl Color {
             let RatioComponent(m) = args.expect("magenta component")?;
             let RatioComponent(y) = args.expect("yellow component")?;
             let RatioComponent(k) = args.expect("key/black component")?;
-            Self::Cmyk(Cmyk::new(
-                c.get() as f32,
-                m.get() as f32,
-                y.get() as f32,
-                k.get() as f32,
-            ))
+            Self::Cmyk(Cmyk::new(c, m, y, k))
         })
     }
 
@@ -605,7 +581,7 @@ impl Color {
         args: &mut Args,
         /// The hue angle.
         #[external]
-        hue: Angle,
+        hue: AngleComponent,
         /// The saturation component.
         #[external]
         saturation: Component,
@@ -624,16 +600,11 @@ impl Color {
         Ok(if let Some(color) = args.find::<Color>()? {
             color.to_hsl()
         } else {
-            let h: Angle = args.expect("hue component")?;
+            let AngleComponent(h) = args.expect("hue component")?;
             let Component(s) = args.expect("saturation component")?;
             let Component(l) = args.expect("lightness component")?;
-            let Component(a) = args.eat()?.unwrap_or(Component(Ratio::one()));
-            Self::Hsl(Hsl::new(
-                RgbHue::from_degrees(h.to_deg() as f32),
-                s.get() as f32,
-                l.get() as f32,
-                a.get() as f32,
-            ))
+            let Component(a) = args.eat()?.unwrap_or(Component(1.0));
+            Self::Hsl(Hsl::new(RgbHue::from_degrees(h), s, l, a))
         })
     }
 
@@ -662,7 +633,7 @@ impl Color {
         args: &mut Args,
         /// The hue angle.
         #[external]
-        hue: Angle,
+        hue: AngleComponent,
         /// The saturation component.
         #[external]
         saturation: Component,
@@ -681,16 +652,11 @@ impl Color {
         Ok(if let Some(color) = args.find::<Color>()? {
             color.to_hsv()
         } else {
-            let h: Angle = args.expect("hue component")?;
+            let AngleComponent(h) = args.expect("hue component")?;
             let Component(s) = args.expect("saturation component")?;
             let Component(v) = args.expect("value component")?;
-            let Component(a) = args.eat()?.unwrap_or(Component(Ratio::one()));
-            Self::Hsv(Hsv::new(
-                RgbHue::from_degrees(h.to_deg() as f32),
-                s.get() as f32,
-                v.get() as f32,
-                a.get() as f32,
-            ))
+            let Component(a) = args.eat()?.unwrap_or(Component(1.0));
+            Self::Hsv(Hsv::new(RgbHue::from_degrees(h), s, v, a))
         })
     }
 
@@ -1869,17 +1835,56 @@ cast! {
     },
 }
 
-/// A component that must be a ratio.
-pub struct RatioComponent(Ratio);
+/// An integer or ratio component.
+///
+/// Must either be:
+/// - a ratio between 0% and 100% inclusive.
+/// - an integer between 0 and 255 inclusive.
+/// - `{none}`, in which case it is ["missing"](https://www.w3.org/TR/css-color-4/#missing).
+pub struct Component(f32);
 
 cast! {
-    RatioComponent,
-    self => self.0.into_value(),
-    v: Ratio => if (0.0 ..= 1.0).contains(&v.get()) {
-        Self(v)
+    Component,
+    v: i64 => match v {
+        0..=255 => Self(v as f32 / 255.0),
+        _ => bail!("number must be between 0 and 255"),
+    },
+    v: Ratio => if (0.0..=1.0).contains(&v.get()) {
+        Self(v.get() as f32)
     } else {
         bail!("ratio must be between 0% and 100%");
     },
+    _: NoneValue => Self(f32::NAN),
+}
+
+/// A component that must be a ratio.
+///
+/// Must either be:
+/// - a ratio between 0% and 100% inclusive.
+/// - `{none}`, in which case it is ["missing"](https://www.w3.org/TR/css-color-4/#missing).
+pub struct RatioComponent(f32);
+
+cast! {
+    RatioComponent,
+    v: Ratio => if (0.0..=1.0).contains(&v.get()) {
+        Self(v.get() as f32)
+    } else {
+        bail!("ratio must be between 0% and 100%");
+    },
+    _: NoneValue => Self(f32::NAN),
+}
+
+/// A hue angle in degrees.
+///
+/// Must either be:
+/// - an angle.
+/// - `{none}`, in which case it is ["missing"](https://www.w3.org/TR/css-color-4/#missing).
+pub struct AngleComponent(f32);
+
+cast! {
+    AngleComponent,
+    v: Angle => Self(v.to_deg() as f32),
+    _: NoneValue => Self(f32::NAN),
 }
 
 /// A chroma color component.
@@ -1887,6 +1892,7 @@ cast! {
 /// Must either be:
 /// - a ratio, in which case it is relative to 0.4.
 /// - a float, in which case it is taken literally.
+/// - `{none}`, in which case it is ["missing"](https://www.w3.org/TR/css-color-4/#missing).
 pub struct ChromaComponent(f32);
 
 cast! {
@@ -1897,23 +1903,7 @@ cast! {
         bail!("number must neither be infinite nor NaN");
     },
     v: Ratio => Self((v.get() * 0.4) as f32),
-}
-
-/// An integer or ratio component.
-pub struct Component(Ratio);
-
-cast! {
-    Component,
-    self => self.0.into_value(),
-    v: i64 => match v {
-        0 ..= 255 => Self(Ratio::new(v as f64 / 255.0)),
-        _ => bail!("number must be between 0 and 255"),
-    },
-    v: Ratio => if (0.0 ..= 1.0).contains(&v.get()) {
-        Self(v)
-    } else {
-        bail!("ratio must be between 0% and 100%");
-    },
+    _: NoneValue => Self(f32::NAN),
 }
 
 /// A module with all preset color maps.
