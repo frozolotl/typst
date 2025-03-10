@@ -146,7 +146,7 @@
 #box(square(size: 9pt, fill: color.hsv(col)))
 
 --- color-space ---
-// Test color kind method.
+// Test color space method.
 #test(rgb(1, 2, 3, 4).space(), rgb)
 #test(cmyk(4%, 5%, 6%, 7%).space(), cmyk)
 #test(luma(40).space(), luma)

@@ -1444,115 +1444,78 @@ impl Repr for Color {
     fn repr(&self) -> EcoString {
         match self {
             Self::Luma(c) => {
-                if c.alpha == 1.0 {
-                    eco_format!("luma({})", Ratio::new(c.luma.into()).repr())
-                } else {
+                eco_format!("luma({}{})", RatioComponent(c.luma), AlphaComponent(c.alpha))
+            }
+            Self::Rgb(c) => {
+                if c.red.is_nan()
+                    || c.green.is_nan()
+                    || c.blue.is_nan()
+                    || c.alpha.is_nan()
+                {
                     eco_format!(
-                        "luma({}, {})",
-                        Ratio::new(c.luma.into()).repr(),
-                        Ratio::new(c.alpha.into()).repr(),
+                        "rgb({}, {}, {}{})",
+                        RatioComponent(c.red),
+                        RatioComponent(c.green),
+                        RatioComponent(c.blue),
+                        AlphaComponent(c.alpha),
                     )
+                } else {
+                    eco_format!("rgb({})", self.to_hex().repr())
                 }
             }
-            Self::Rgb(_) => eco_format!("rgb({})", self.to_hex().repr()),
             Self::LinearRgb(c) => {
-                if c.alpha == 1.0 {
-                    eco_format!(
-                        "color.linear-rgb({}, {}, {})",
-                        Ratio::new(c.red.into()).repr(),
-                        Ratio::new(c.green.into()).repr(),
-                        Ratio::new(c.blue.into()).repr(),
-                    )
-                } else {
-                    eco_format!(
-                        "color.linear-rgb({}, {}, {}, {})",
-                        Ratio::new(c.red.into()).repr(),
-                        Ratio::new(c.green.into()).repr(),
-                        Ratio::new(c.blue.into()).repr(),
-                        Ratio::new(c.alpha.into()).repr(),
-                    )
-                }
+                eco_format!(
+                    "color.linear-rgb({}, {}, {}{})",
+                    RatioComponent(c.red),
+                    RatioComponent(c.green),
+                    RatioComponent(c.blue),
+                    AlphaComponent(c.alpha),
+                )
             }
             Self::Cmyk(c) => {
                 eco_format!(
                     "cmyk({}, {}, {}, {})",
-                    Ratio::new(c.c.into()).repr(),
-                    Ratio::new(c.m.into()).repr(),
-                    Ratio::new(c.y.into()).repr(),
-                    Ratio::new(c.k.into()).repr(),
+                    RatioComponent(c.c),
+                    RatioComponent(c.m),
+                    RatioComponent(c.y),
+                    RatioComponent(c.k),
                 )
             }
             Self::Oklab(c) => {
-                if c.alpha == 1.0 {
-                    eco_format!(
-                        "oklab({}, {}, {})",
-                        Ratio::new(c.l.into()).repr(),
-                        repr::format_float_component(c.a.into()),
-                        repr::format_float_component(c.b.into()),
-                    )
-                } else {
-                    eco_format!(
-                        "oklab({}, {}, {}, {})",
-                        Ratio::new(c.l.into()).repr(),
-                        repr::format_float_component(c.a.into()),
-                        repr::format_float_component(c.b.into()),
-                        Ratio::new(c.alpha.into()).repr(),
-                    )
-                }
+                eco_format!(
+                    "oklab({}, {}, {}{})",
+                    RatioComponent(c.l),
+                    ChromaComponent(c.a),
+                    ChromaComponent(c.b),
+                    AlphaComponent(c.alpha),
+                )
             }
             Self::Oklch(c) => {
-                if c.alpha == 1.0 {
-                    eco_format!(
-                        "oklch({}, {}, {})",
-                        Ratio::new(c.l.into()).repr(),
-                        repr::format_float_component(c.chroma.into()),
-                        hue_angle(c.hue.into_degrees()).repr(),
-                    )
-                } else {
-                    eco_format!(
-                        "oklch({}, {}, {}, {})",
-                        Ratio::new(c.l.into()).repr(),
-                        repr::format_float_component(c.chroma.into()),
-                        hue_angle(c.hue.into_degrees()).repr(),
-                        Ratio::new(c.alpha.into()).repr(),
-                    )
-                }
+                eco_format!(
+                    "oklch({}, {}, {}{})",
+                    RatioComponent(c.l),
+                    ChromaComponent(c.chroma),
+                    AngleComponent(c.hue.into_degrees()),
+                    AlphaComponent(c.alpha),
+                )
             }
             Self::Hsl(c) => {
-                if c.alpha == 1.0 {
-                    eco_format!(
-                        "color.hsl({}, {}, {})",
-                        hue_angle(c.hue.into_degrees()).repr(),
-                        Ratio::new(c.saturation.into()).repr(),
-                        Ratio::new(c.lightness.into()).repr(),
-                    )
-                } else {
-                    eco_format!(
-                        "color.hsl({}, {}, {}, {})",
-                        hue_angle(c.hue.into_degrees()).repr(),
-                        Ratio::new(c.saturation.into()).repr(),
-                        Ratio::new(c.lightness.into()).repr(),
-                        Ratio::new(c.alpha.into()).repr(),
-                    )
-                }
+                eco_format!(
+                    "color.hsl({}, {}, {}{})",
+                    AngleComponent(c.hue.into_degrees()),
+                    RatioComponent(c.saturation),
+                    RatioComponent(c.lightness),
+                    AlphaComponent(c.alpha),
+                )
             }
             Self::Hsv(c) => {
-                if c.alpha == 1.0 {
-                    eco_format!(
-                        "color.hsv({}, {}, {})",
-                        hue_angle(c.hue.into_degrees()).repr(),
-                        Ratio::new(c.saturation.into()).repr(),
-                        Ratio::new(c.value.into()).repr(),
-                    )
-                } else {
-                    eco_format!(
-                        "color.hsv({}, {}, {}, {})",
-                        hue_angle(c.hue.into_degrees()).repr(),
-                        Ratio::new(c.saturation.into()).repr(),
-                        Ratio::new(c.value.into()).repr(),
-                        Ratio::new(c.alpha.into()).repr(),
-                    )
-                }
+                eco_format!(
+                    "color.hsv({}, {}, {}{})",
+                    AngleComponent(c.hue.into_degrees()),
+                    RatioComponent(c.saturation),
+                    RatioComponent(c.value),
+                    AlphaComponent(c.alpha),
+                )
             }
         }
     }
@@ -1892,6 +1855,12 @@ cast! {
     _: NoneValue => Self(f32::NAN),
 }
 
+impl fmt::Display for Component {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        RatioComponent(self.0).fmt(f)
+    }
+}
+
 /// A component that must be a ratio.
 ///
 /// Must either be:
@@ -1909,6 +1878,16 @@ cast! {
     _: NoneValue => Self(f32::NAN),
 }
 
+impl fmt::Display for RatioComponent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.0.is_nan() {
+            f.write_str("none")
+        } else {
+            f.write_str(&repr::format_float_with_unit(f64::from(self.0) * 100.0, "%"))
+        }
+    }
+}
+
 /// A hue angle in degrees.
 ///
 /// Must either be:
@@ -1920,6 +1899,17 @@ cast! {
     AngleComponent,
     v: Angle => Self(v.to_deg() as f32),
     _: NoneValue => Self(f32::NAN),
+}
+
+impl fmt::Display for AngleComponent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.0.is_nan() {
+            f.write_str("none")
+        } else {
+            let angle = self.0.rem_euclid(360.0).into();
+            f.write_str(&repr::format_float_with_unit(angle, "deg"))
+        }
+    }
 }
 
 /// A chroma color component.
@@ -1939,6 +1929,37 @@ cast! {
     },
     v: Ratio => Self((v.get() * 0.4) as f32),
     _: NoneValue => Self(f32::NAN),
+}
+
+impl fmt::Display for ChromaComponent {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        if self.0.is_nan() {
+            f.write_str("none")
+        } else {
+            f.write_str(&repr::format_float_component(self.0.into()))
+        }
+    }
+}
+
+/// The alpha value of a color.
+///
+/// This is exclusively intended for the [`Repr`] implementation.
+pub struct AlphaComponent(f32);
+
+impl fmt::Display for AlphaComponent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.0 == 1.0 {
+            Ok(())
+        } else if self.0.is_nan() {
+            f.write_str(", none")
+        } else {
+            write!(
+                f,
+                ", {}",
+                repr::format_float_with_unit(f64::from(self.0) * 100.0, "%")
+            )
+        }
+    }
 }
 
 /// A module with all preset color maps.

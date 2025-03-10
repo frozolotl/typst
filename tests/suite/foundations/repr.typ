@@ -70,6 +70,14 @@ sequence(
 #t(color.hsl(blue), `color.hsl(207.93deg, 100%, 42.55%)`)
 #t(color.hsv(blue), `color.hsv(207.93deg, 100%, 85.1%)`)
 #t(luma(blue), `luma(45.53%)`)
+#t(rgb(none, none, none, none), `rgb(none, none, none, none)`)
+#t(luma(none, none), `luma(none, none)`)
+#t(color.linear-rgb(none, none, none, none), `color.linear-rgb(none, none, none, none)`)
+#t(cmyk(none, none, none, none), `cmyk(none, none, none, none)`)
+#t(oklab(none, none, none, none), `oklab(none, none, none, none)`)
+#t(oklch(none, none, none, none), `oklch(none, none, none, none)`)
+#t(color.hsl(none, none, none, none), `color.hsl(none, none, none, none)`)
+#t(color.hsv(none, none, none, none), `color.hsv(none, none, none, none)`)
 
 // Gradients.
 #t(
