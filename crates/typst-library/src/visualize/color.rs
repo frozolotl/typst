@@ -796,6 +796,8 @@ impl Color {
     /// Returns the color's RGB(A) hex representation (such as `#ffaa32` or
     /// `#020304fe`). The alpha component (last two digits in `#020304fe`) is
     /// omitted if it is equal to `ff` (255 / 100%).
+    ///
+    /// Missing components are normalized to zero.
     #[func]
     pub fn to_hex(self) -> EcoString {
         let [r, g, b, a] = self.to_rgb().normalize().to_vec4_u8();
@@ -1525,20 +1527,23 @@ impl Repr for Color {
 
 impl PartialEq for Color {
     fn eq(&self, other: &Self) -> bool {
-        match (self.normalize(), other.normalize()) {
-            // Lower precision for comparison to avoid rounding errors.
-            // Keeps backward compatibility with previous versions of Typst.
-            (Self::Rgb(_), Self::Rgb(_)) => self.to_vec4_u8() == other.to_vec4_u8(),
-            (Self::Luma(a), Self::Luma(b)) => {
-                (a.luma * 255.0).round() as u8 == (b.luma * 255.0).round() as u8
-            }
-            (Self::Oklab(a), Self::Oklab(b)) => a == b,
-            (Self::Oklch(a), Self::Oklch(b)) => a == b,
-            (Self::LinearRgb(a), Self::LinearRgb(b)) => a == b,
-            (Self::Cmyk(a), Self::Cmyk(b)) => a == b,
-            (Self::Hsl(a), Self::Hsl(b)) => a == b,
-            (Self::Hsv(a), Self::Hsv(b)) => a == b,
-            _ => false,
+        let space = self.space();
+        if space != other.space() {
+            return false;
+        }
+
+        let mut zipped = self.to_vec4().into_iter().zip(other.to_vec4());
+        if matches!(space, ColorSpace::Srgb | ColorSpace::D65Gray) {
+            zipped.all(|(a, b)| {
+                if a.is_nan() && b.is_nan() {
+                    true
+                } else {
+                    let round = |x: f32| (x * 255.0).round() as u8;
+                    round(a) == round(b)
+                }
+            })
+        } else {
+            zipped.all(|(a, b)| (a.is_nan() && b.is_nan()) || (a == b))
         }
     }
 }
