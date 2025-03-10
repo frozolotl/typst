@@ -181,6 +181,10 @@
 #test-components(color.hsv(10deg, 20%, 30%), (10deg, 20%, 30%, 100%))
 #test-components(color.hsl(10deg, 20%, 30%), (10deg, 20%, 30%, 100%))
 
+#test(rgb(none, none, none, none).components(), (none, none, none, none))
+#test(oklab(none, none, none, none).components(), (none, none, none, none))
+#test(oklch(none, none, none, none).components(), (none, none, none, none))
+
 --- color-luma ---
 // Test gray color conversion.
 #stack(dir: ltr, rect(fill: luma(0)), rect(fill: luma(80%)))

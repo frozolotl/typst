@@ -695,64 +695,66 @@ impl Color {
         #[default(true)]
         alpha: bool,
     ) -> Array {
+        fn scalar(x: f32) -> Value {
+            if x.is_nan() {
+                NoneValue.into_value()
+            } else {
+                f64::from(x).into_value()
+            }
+        }
+        fn ratio(x: f32) -> Value {
+            if x.is_nan() {
+                NoneValue.into_value()
+            } else {
+                Ratio::new(x.into()).into_value()
+            }
+        }
+        fn angle(degrees: f32) -> Value {
+            if degrees.is_nan() {
+                NoneValue.into_value()
+            } else {
+                Angle::deg(f64::from(degrees).rem_euclid(360.0)).into_value()
+            }
+        }
+
         let mut components = match self {
             Self::Luma(c) => {
-                array![Ratio::new(c.luma.into()), Ratio::new(c.alpha.into())]
+                array![ratio(c.luma), ratio(c.alpha)]
             }
             Self::Oklab(c) => {
-                array![
-                    Ratio::new(c.l.into()),
-                    f64::from(c.a),
-                    f64::from(c.b),
-                    Ratio::new(c.alpha.into())
-                ]
+                array![ratio(c.l), scalar(c.a), scalar(c.b), ratio(c.alpha)]
             }
             Self::Oklch(c) => {
                 array![
-                    Ratio::new(c.l.into()),
-                    f64::from(c.chroma),
-                    hue_angle(c.hue.into_degrees()),
-                    Ratio::new(c.alpha.into()),
+                    ratio(c.l),
+                    scalar(c.chroma),
+                    angle(c.hue.into_degrees()),
+                    ratio(c.alpha),
                 ]
             }
             Self::LinearRgb(c) => {
-                array![
-                    Ratio::new(c.red.into()),
-                    Ratio::new(c.green.into()),
-                    Ratio::new(c.blue.into()),
-                    Ratio::new(c.alpha.into()),
-                ]
+                array![ratio(c.red), ratio(c.green), ratio(c.blue), ratio(c.alpha),]
             }
             Self::Rgb(c) => {
-                array![
-                    Ratio::new(c.red.into()),
-                    Ratio::new(c.green.into()),
-                    Ratio::new(c.blue.into()),
-                    Ratio::new(c.alpha.into()),
-                ]
+                array![ratio(c.red), ratio(c.green), ratio(c.blue), ratio(c.alpha),]
             }
             Self::Cmyk(c) => {
-                array![
-                    Ratio::new(c.c.into()),
-                    Ratio::new(c.m.into()),
-                    Ratio::new(c.y.into()),
-                    Ratio::new(c.k.into())
-                ]
+                array![ratio(c.c), ratio(c.m), ratio(c.y), ratio(c.k)]
             }
             Self::Hsl(c) => {
                 array![
-                    hue_angle(c.hue.into_degrees()),
-                    Ratio::new(c.saturation.into()),
-                    Ratio::new(c.lightness.into()),
-                    Ratio::new(c.alpha.into()),
+                    angle(c.hue.into_degrees()),
+                    ratio(c.saturation),
+                    ratio(c.lightness),
+                    ratio(c.alpha),
                 ]
             }
             Self::Hsv(c) => {
                 array![
-                    hue_angle(c.hue.into_degrees()),
-                    Ratio::new(c.saturation.into()),
-                    Ratio::new(c.value.into()),
-                    Ratio::new(c.alpha.into()),
+                    angle(c.hue.into_degrees()),
+                    ratio(c.saturation),
+                    ratio(c.value),
+                    ratio(c.alpha),
                 ]
             }
         };
@@ -1409,7 +1411,7 @@ impl Debug for Color {
                     "Oklch({}, {}, {:?}, {})",
                     v.l,
                     v.chroma,
-                    hue_angle(v.hue.into_degrees()),
+                    v.hue.into_degrees(),
                     v.alpha
                 )
             }
@@ -1423,7 +1425,7 @@ impl Debug for Color {
             Self::Hsl(v) => write!(
                 f,
                 "Hsl({:?}, {}, {}, {})",
-                hue_angle(v.hue.into_degrees()),
+                v.hue.into_degrees(),
                 v.saturation,
                 v.lightness,
                 v.alpha
@@ -1431,7 +1433,7 @@ impl Debug for Color {
             Self::Hsv(v) => write!(
                 f,
                 "Hsv({:?}, {}, {}, {})",
-                hue_angle(v.hue.into_degrees()),
+                v.hue.into_degrees(),
                 v.saturation,
                 v.value,
                 v.alpha
@@ -1519,10 +1521,6 @@ impl Repr for Color {
             }
         }
     }
-}
-
-fn hue_angle(degrees: f32) -> Angle {
-    Angle::deg(f64::from(degrees).rem_euclid(360.0))
 }
 
 impl PartialEq for Color {
