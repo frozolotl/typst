@@ -12,7 +12,8 @@ use crate::foundations::{
     array, cast, func, scope, ty, Args, Array, Cast, Func, IntoValue, Repr, Smart,
 };
 use crate::layout::{Angle, Axes, Dir, Quadrant, Ratio};
-use crate::visualize::{Color, ColorSpace, WeightedColor};
+
+use super::color::{self, Color, ColorSpace, WeightedColor};
 
 /// A color gradient.
 ///
@@ -1295,7 +1296,7 @@ fn sample_stops(stops: &[(Color, Ratio)], mixing_space: ColorSpace, t: f64) -> C
     let (col_1, pos_1) = stops[low];
     let t = (t - pos_0.get()) / (pos_1.get() - pos_0.get());
 
-    Color::mix_iter(
+    color::mix_iter(
         [WeightedColor::new(col_0, 1.0 - t), WeightedColor::new(col_1, t)],
         mixing_space,
     )

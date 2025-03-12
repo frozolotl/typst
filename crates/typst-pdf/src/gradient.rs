@@ -8,9 +8,8 @@ use pdf_writer::writers::StreamShadingType;
 use pdf_writer::{Filter, Finish, Name, Ref};
 use typst_library::diag::SourceResult;
 use typst_library::layout::{Abs, Angle, Point, Quadrant, Ratio, Transform};
-use typst_library::visualize::{
-    Color, ColorSpace, Gradient, RatioOrAngle, RelativeTo, WeightedColor,
-};
+use typst_library::visualize::color::{mix_iter, Color, ColorSpace, WeightedColor};
+use typst_library::visualize::{Gradient, RatioOrAngle, RelativeTo};
 use typst_utils::Numeric;
 
 use crate::color::{
@@ -472,13 +471,13 @@ fn compute_vertex_stream(gradient: &Gradient, aspect_ratio: Ratio) -> Arc<Vec<u8
 
             // The current progress in the current window.
             let t = |t| (t - t0.get()) / (t1.get() - t0.get());
-            let c = Color::mix_iter(
+            let c = mix_iter(
                 [WeightedColor::new(c0, 1.0 - t(t_x)), WeightedColor::new(c1, t(t_x))],
                 conic.space,
             )
             .unwrap();
 
-            let c_next = Color::mix_iter(
+            let c_next = mix_iter(
                 [
                     WeightedColor::new(c0, 1.0 - t(t_next)),
                     WeightedColor::new(c1, t(t_next)),

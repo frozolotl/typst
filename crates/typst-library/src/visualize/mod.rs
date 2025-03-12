@@ -1,6 +1,6 @@
 //! Drawing and visualization.
 
-mod color;
+pub mod color;
 mod curve;
 mod gradient;
 mod image;
@@ -12,7 +12,7 @@ mod shape;
 mod stroke;
 mod tiling;
 
-pub use self::color::*;
+pub use self::color::{Color, ColorSpace};
 pub use self::curve::*;
 pub use self::gradient::*;
 pub use self::image::*;
